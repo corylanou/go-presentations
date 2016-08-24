@@ -170,6 +170,12 @@ Currently to test an http endpoint, we require an actual `keys.Store`.  That is 
 
 .code ../code/testing/decoupled/httpd/handler.go /START DECOUPLED-OMIT/,/END DECOUPLED-OMIT/
 
+* More about loosely coupled
+
+.link https://en.wikipedia.org/wiki/Interface_segregation_principle Interface Segreation Principle
+
+.link http://dave.cheney.net/2016/08/20/solid-go-design Dave Cheney Solid Go Design
+
 * Ok, so it's loosely coupled now, what did I gain?
 
 * Mocking out services in your tests
