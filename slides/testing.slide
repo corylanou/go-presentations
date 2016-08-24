@@ -1,0 +1,272 @@
+Testing with Go
+18:00 24 Aug 2016
+Tags: go testing
+
+Cory LaNou
+Core Database Developer - InfluxData
+http://github.com/corylanou
+@corylanou
+
+* This talk will not teach you Go
+
+But there are great resources on it, and they have great documentation.
+
+.link http://golang.org golang.org
+
+This talk will include:
+
+- Formatting Test Output
+- Testing asynchronous tasks
+- Mocking out services in your tests
+- GoConvey
+- Q&A
+
+* But first... a few public service annoucements
+
+* Get on Gopher Slack
+
+.link http://bit.ly/go-slack-signup http://bit.ly/go-slack-signup
+
+After Signing Up:
+
+.link https://gophers.slack.com/messages/minneapolis/ https://gophers.slack.com/messages/minneapolis/
+
+We will use the Chicago channel to share links for the presentation.
+
+* OSS Help Wanted Go Projects
+
+This repo contains many Go projects that have issues labeled with easy/medium/hard.  Great resource for learning Go
+while solving real world problems.
+
+.link https://github.com/corylanou/oss-helpwanted Help Wanted
+
+* Formatting Test Output
+
+* Testing output - Poor
+
+.code ../code/testing/math/math_test.go /START POOR-OMIT/,/END POOR-OMIT/
+
+*Output*
+
+	--- FAIL: Test_AddTen (0.00s)
+		math_test.go:13: unexpected value
+
+* Testing output - Better
+
+.code ../code/testing/math/math_test.go /START BETTER-OMIT/,/END BETTER-OMIT/
+
+*Output*
+
+	--- FAIL: Test_AddTenBetter (0.00s)
+		math_test.go:23: unexpected value, got 12
+
+* Testing output - Better Yet
+
+.code ../code/testing/math/math_test.go /START BETTER-YET-OMIT/,/END BETTER-YET-OMIT/
+
+*Output*
+
+	--- FAIL: Test_AddTenBetterYet (0.00s)
+		math_test.go:33: unexpected value, exp: 11, got 12
+
+* Testing output - Best
+
+.code ../code/testing/math/math_test.go /START BEST-OMIT/,/END BEST-OMIT/
+
+*Output*
+
+	--- FAIL: Test_AddTenBest (0.00s)
+		math_test.go:42: unexpected value, exp: 11, got 12
+
+*NOTE:* Not all my colleagues agree with me that this is the best.
+
+* Testing asynchronous tasks
+
+* What is asynchronous?
+
+Many times you may be testing parts of your code that have service dependency that run for an unknown amount of time.
+
+Examples of these may be task queues, distributed system calls, etc.
+
+Because you don't know how long they may take to execute, testing them can present some challenges.
+
+* The Use Case
+
+In this use case, we have a database that will accept data via an http endpoint and que them to write to the database.
+
+Issues:
+
+- We don't know how long it will take for the value to be written to the database
+- It could fail and never be written, so we need to be able to time out the test
+
+* time.Sleep
+
+.code ../code/testing/coupled/httpd/handler_test.go /START SLEEP-OMIT/,/END SLEEP-OMIT/
+
+* time.Sleep issues
+
+- Doesn't allow us to time out, will likely result in intermittent test failures
+- Bloats testing time for no good reason.
+- Usually ends up resulting in a really really big timeout to avoid intermittent test results
+
+* Channels to the rescue!
+
+- Result in much lower test time bloat
+- Allows us to time out the test
+
+* Setting up the test channels
+
+.code ../code/testing/coupled/httpd/handler_test.go /START CHANNEL-SETUP-OMIT/,/END CHANNEL-SETUP-OMIT/
+
+* Looping the test
+
+.code ../code/testing/coupled/httpd/handler_test.go /START CHANNEL-OMIT/,/END CHANNEL-OMIT/
+
+* The inner test
+
+.code ../code/testing/coupled/httpd/handler_test.go /START FUNC-INNER-OMIT/,/END FUNC-INNER-OMIT/
+
+* Decoupling your code for testing
+
+* Too many dependencies already
+
+Currently to test an http endpoint, we require an actual `keys.Store`.  That is because the code is tightly coupled.
+
+* Tightly Coupled
+
+.code ../code/testing/coupled/main.go /START COUPLED-OMIT/,/END COUPLED-OMIT/
+
+.code ../code/testing/coupled/httpd/handler.go /START COUPLED-OMIT/,/END COUPLED-OMIT/
+
+* Loosely Coupled
+
+.code ../code/testing/decoupled/main.go /START DECOUPLED-OMIT/,/END DECOUPLED-OMIT/
+
+.code ../code/testing/decoupled/httpd/handler.go /START DECOUPLED-OMIT/,/END DECOUPLED-OMIT/
+
+* Ok, so it's loosely coupled now, what did I gain?
+
+* Mocking out services in your tests
+
+* The Mock
+
+.code ../code/testing/decoupled/httpd/handler_test.go /START MOCK-OMIT/,/END MOCK-OMIT/
+
+* Test Setup with Mock
+
+.code ../code/testing/decoupled/httpd/handler_test.go /START MOCK-SETUP-OMIT/,/END MOCK-SETUP-OMIT/
+
+* We Came, We Decoupled, We Mocked Out!
+
+- No longer dependent on services outside our package for testing.
+- Can easily test all code branches of our package, including all error conditions
+
+
+* Test Options
+
+* Testing Options: -v
+
+Verbose: `-v` is very useful when you want to see all the test logging.  This is common when running
+tests on automated testing platforms such as jenkins, circle, etc.
+
+	go test ./code/testing/... -v
+
+	?          github.com/corylanou/go-presentations/code/testing/coupled      [no test files]
+	=== RUN   Test_Get_NotFound
+	--- SKIP: Test_Get_NotFound (0.00s)
+	   handler_test.go:18:
+	=== RUN   Test_Upsert_Sleep
+	--- SKIP: Test_Upsert_Sleep (0.00s)
+	   handler_test.go:36:
+	=== RUN   Test_Upsert_Channels
+	2016/08/23 20:11:09 upsert...
+	2016/08/23 20:11:10 get...
+	2016/08/23 20:11:10 inserted:  foo  with value of  bar
+	2016/08/23 20:11:10 get...
+	2016/08/23 20:11:10 took 278.149µs
+	--- PASS: Test_Upsert_Channels (1.01s)
+	PASS
+	ok         github.com/corylanou/go-presentations/code/testing/coupled/httpd        1.017s
+	?          github.com/corylanou/go-presentations/code/testing/coupled/keys [no test files]
+
+* Testing Options: Run a specific test (Regex)
+
+This will run any test that starts with `Test_Upsert`
+
+	go test ./code/testing/... -run Test_Upsert
+
+Useful for running just a few tests when refactoring or TDD'ing
+
+* Testing Options: Set a test timeout
+
+
+	go test ./code/testing/... -timeout 10s
+
+Always run this for your automated testing.  If/when your code deadlocks, it will time out and provide a stack trace of the routines to assist in debugging.
+
+
+
+* Test Coverage
+
+My typical script:
+
+	echo "creating coverage files"
+	go test -coverprofile=/tmp/coverage.out
+	go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
+	echo "coverage files created"
+
+* How did we do?
+
+.image ../img/testing/coverage.png
+
+* Some lightweight automation
+
+.link https://github.com/cespare/reflex reflex
+
+Reflex is a small tool to watch a directory and rerun a command when certain files change. It's great for automatically running compile/lint/test tasks and for reloading your application when the code changes.
+
+I run coverage for packages with this command:
+
+	reflex -- sh ~/coverage.sh
+
+* Pro Tip
+
+You can turn of the garbage collector to run tests.  This will speed up testing significantly.
+
+Do NOT do this for benchmarking!
+
+	GOGC=off go test ./...
+
+Note: I turn of GC for creating coverage files as well...
+
+* GoConvey
+
+.link https://github.com/smartystreets/goconvey GoConvey
+
+ 	go get github.com/smartystreets/goconvey
+	# from the project root run:
+	goconvey
+
+* GoConvey Features
+
+- Directly integrates with go test
+- Fully-automatic web UI (works with native Go tests, too)
+- Huge suite of regression tests
+- Shows test coverage (Go 1.2+)
+- Readable, colorized console output (understandable by any manager, IT or not)
+- Test code generator
+- Desktop notifications (optional)
+- Immediately open problem lines in Sublime Text (some assembly required)
+
+
+* GoConvey Screenshot
+
+.image ../img/testing/goconvey.png
+
+* Questions?
+
+
+
+
+
+
