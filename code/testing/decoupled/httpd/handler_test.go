@@ -3,6 +3,7 @@ package httpd_test
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -13,11 +14,11 @@ import (
 	"github.com/corylanou/go-presentations/code/testing/decoupled/httpd"
 )
 
-func Test_Upsert_NoErrors(t *testing.T) {
+func TestSet_NoErrors(t *testing.T) {
 
 	// START MOCK-SETUP-OMIT
 	handler := httpd.NewHandler()
-	store := &mockStore{}
+	store := &MockStore{}
 	store.getFn = func(key string) (interface{}, error) {
 		return "bar", nil
 	}
@@ -27,7 +28,7 @@ func Test_Upsert_NoErrors(t *testing.T) {
 	w := httptest.NewRecorder()
 	r, err := http.NewRequest("POST", "/key", nil)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	r.Form = url.Values{"key": []string{"foo"}, "value": []string{"bar"}}
 
@@ -37,26 +38,26 @@ func Test_Upsert_NoErrors(t *testing.T) {
 	}
 
 	// START FUNC-INNER-OMIT
-	test := func() (bool, error) {
+	test := func() error {
 		w = httptest.NewRecorder()
 		r, err = http.NewRequest("GET", "/key?key=foo", nil)
 		if err != nil {
-			return false, err
+			return err
 		}
 		handler.ServeHTTP(w, r)
 
-		if exp, got := w.Code, http.StatusOK; exp == got {
-			data := map[string]interface{}{}
-			if err := json.Unmarshal(w.Body.Bytes(), &data); err != nil {
-				return false, err
-			}
-			if exp, got := "bar", data["foo"]; exp != got {
-				return true, fmt.Errorf("unexpected value.  exp: %v, got %v", exp, got)
-			} else {
-				return true, nil
-			}
+		if got, exp := w.Code, http.StatusOK; got != exp {
+			return fmt.Errorf("unexpected status code.  got %d, expected %d", got, exp)
 		}
-		return false, nil
+		data := map[string]interface{}{}
+		if err := json.Unmarshal(w.Body.Bytes(), &data); err != nil {
+			return err
+		}
+		if got, exp := data["foo"], "bar"; got != exp {
+			return fmt.Errorf("unexpected value.  got: %v, exp %v", got, exp)
+		}
+		// test successful
+		return nil
 	}
 	// END FUNC-INNER-OMIT
 
@@ -68,18 +69,16 @@ func Test_Upsert_NoErrors(t *testing.T) {
 	// END CHANNEL-SETUP-OMIT
 
 	// START CHANNEL-OMIT
+	var testErr error
+
 	for {
 		select {
 		case <-timeout.C:
-			t.Fatal("test timed out waiting for success")
+			t.Fatalf("test timed out waiting for success.  last error: %s", testErr)
 			return
 		case <-ticker.C:
-			ok, err := test()
-			if ok && err != nil {
-				t.Fatal(err)
-				return
-			}
-			if ok && err == nil {
+			testErr = test()
+			if testErr == nil {
 				// test successful
 				return
 			}
@@ -89,18 +88,18 @@ func Test_Upsert_NoErrors(t *testing.T) {
 }
 
 // START MOCK-OMIT
-type mockStore struct {
+type MockStore struct {
 	upsertFn func(key string, value interface{})
 	getFn    func(key string) (interface{}, error)
 }
 
-func (ms *mockStore) Upsert(key string, value interface{}) {
+func (ms *MockStore) Set(key string, value interface{}) {
 	if ms.upsertFn != nil {
 		ms.upsertFn(key, value)
 	}
 }
 
-func (ms *mockStore) Get(key string) (interface{}, error) {
+func (ms *MockStore) Get(key string) (interface{}, error) {
 	if ms.getFn != nil {
 		return ms.getFn(key)
 	}
@@ -108,3 +107,15 @@ func (ms *mockStore) Get(key string) (interface{}, error) {
 }
 
 // END MOCK-OMIT
+
+// START VERBOSE-OMIT
+func TestVerbose(t *testing.T) {
+	if testing.Verbose() {
+		t.Log("put extra logging here that normally we don't care about")
+	} else {
+		// silence my normal loggers
+		log.SetOutput(ioutil.Discard)
+	}
+}
+
+// END VERBOSE-OMIT

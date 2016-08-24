@@ -7,7 +7,7 @@ import (
 )
 
 //START POOR-OMIT
-func Test_AddTen(t *testing.T) {
+func TestAddTen(t *testing.T) {
 	v := math.AddTen(1)
 	if v != 11 {
 		t.Fatal("unexpected value")
@@ -17,7 +17,7 @@ func Test_AddTen(t *testing.T) {
 //END POOR-OMIT
 
 //START BETTER-OMIT
-func Test_AddTenBetter(t *testing.T) {
+func TestAddTen_Better(t *testing.T) {
 	v := math.AddTen(1)
 	if v != 11 {
 		t.Fatalf("unexpected value, got %d", v)
@@ -27,19 +27,19 @@ func Test_AddTenBetter(t *testing.T) {
 //END BETTER-OMIT
 
 //START BETTER-YET-OMIT
-func Test_AddTenBetterYet(t *testing.T) {
+func TestAddTen_BetterYet(t *testing.T) {
 	v := math.AddTen(1)
 	if v != 11 {
-		t.Fatalf("unexpected value, exp: %d, got %d", 11, v)
+		t.Fatalf("unexpected value, got: %d, exp %d", v, 11)
 	}
 }
 
 //END BETTER-YET-OMIT
 
 //START BEST-OMIT
-func Test_AddTenBest(t *testing.T) {
-	if exp, got := 11, math.AddTen(1); exp != got {
-		t.Fatalf("unexpected value, exp: %d, got %d", exp, got)
+func TestAddTen_Best(t *testing.T) {
+	if got, exp := math.AddTen(1), 11; got != exp {
+		t.Fatalf("unexpected value, got: %d, exp %d", got, exp)
 	}
 }
 

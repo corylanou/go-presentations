@@ -31,7 +31,7 @@ After Signing Up:
 
 .link https://gophers.slack.com/messages/minneapolis/ https://gophers.slack.com/messages/minneapolis/
 
-We will use the Chicago channel to share links for the presentation.
+We will use the Minneapolis channel to share links for the presentation.
 
 * OSS Help Wanted Go Projects
 
@@ -48,7 +48,7 @@ while solving real world problems.
 
 *Output*
 
-	--- FAIL: Test_AddTen (0.00s)
+	--- FAIL: TestAddTen (0.00s)
 		math_test.go:13: unexpected value
 
 * Testing output - Better
@@ -57,7 +57,7 @@ while solving real world problems.
 
 *Output*
 
-	--- FAIL: Test_AddTenBetter (0.00s)
+	--- FAIL: TestAddTen_Better (0.00s)
 		math_test.go:23: unexpected value, got 12
 
 * Testing output - Better Yet
@@ -66,7 +66,7 @@ while solving real world problems.
 
 *Output*
 
-	--- FAIL: Test_AddTenBetterYet (0.00s)
+	--- FAIL: TestAddTen_BetterYet (0.00s)
 		math_test.go:33: unexpected value, exp: 11, got 12
 
 * Testing output - Best
@@ -75,10 +75,20 @@ while solving real world problems.
 
 *Output*
 
-	--- FAIL: Test_AddTenBest (0.00s)
+	--- FAIL: TestAddTen_Best (0.00s)
 		math_test.go:42: unexpected value, exp: 11, got 12
 
-*NOTE:* Not all my colleagues agree with me that this is the best.
+*NOTE:* Not all my colleagues agree with me that this is the best. (Ben Johnson asked that I call him out by name here.)
+
+* Internal vs. Black Box Testing
+
+If your test is the same package as what you are testing, you are doing internal testing.
+
+	package `mypackage`
+
+If your test has the `_test` package name, then you are black box testing, and can only use public parts of the package.
+
+	package `mypackage_test`
 
 * Testing asynchronous tasks
 
@@ -92,7 +102,7 @@ Because you don't know how long they may take to execute, testing them can prese
 
 * The Use Case
 
-In this use case, we have a database that will accept data via an http endpoint and que them to write to the database.
+In this use case, we have a database that will accept data via an http endpoint and queue them to write to the database.
 
 Issues:
 
@@ -125,6 +135,18 @@ Issues:
 * The inner test
 
 .code ../code/testing/coupled/httpd/handler_test.go /START FUNC-INNER-OMIT/,/END FUNC-INNER-OMIT/
+
+* Reusing your timeout channel logic - the func
+
+.code ../code/testing/coupled/httpd/handler_test.go /START TIMEOUT-AFTER-OMIT/,/END TIMEOUT-AFTER-OMIT/
+
+* Reusing your timeout channel logic - in use
+
+.code ../code/testing/coupled/httpd/handler_test.go /START TIMEOUT-AFTER-USAGE-OMIT/,/END TIMEOUT-AFTER-USAGE-OMIT/
+
+* Thanks Ben
+
+Previous example courtesy of Ben B. Johnson (twitter link later in credits)
 
 * Decoupling your code for testing
 
@@ -172,28 +194,36 @@ tests on automated testing platforms such as jenkins, circle, etc.
 	go test ./code/testing/... -v
 
 	?          github.com/corylanou/go-presentations/code/testing/coupled      [no test files]
-	=== RUN   Test_Get_NotFound
-	--- SKIP: Test_Get_NotFound (0.00s)
+	=== RUN   TestGet_NotFound
+	--- SKIP: TestGet_NotFound (0.00s)
 	   handler_test.go:18:
-	=== RUN   Test_Upsert_Sleep
-	--- SKIP: Test_Upsert_Sleep (0.00s)
+	=== RUN   TestSet_Sleep
+	--- SKIP: TestSet_Sleep (0.00s)
 	   handler_test.go:36:
-	=== RUN   Test_Upsert_Channels
+	=== RUN   TestSet_Channels
 	2016/08/23 20:11:09 upsert...
 	2016/08/23 20:11:10 get...
 	2016/08/23 20:11:10 inserted:  foo  with value of  bar
 	2016/08/23 20:11:10 get...
 	2016/08/23 20:11:10 took 278.149µs
-	--- PASS: Test_Upsert_Channels (1.01s)
+	--- PASS: TestSet_Channels (1.01s)
 	PASS
 	ok         github.com/corylanou/go-presentations/code/testing/coupled/httpd        1.017s
 	?          github.com/corylanou/go-presentations/code/testing/coupled/keys [no test files]
 
+* Check if verbose is on
+
+You can also check IN your test if verbose is turned on with the following command:
+
+
+.code ../code/testing/decoupled/httpd/handler_test.go /START VERBOSE-OMIT/,/END VERBOSE-OMIT/
+
+	
 * Testing Options: Run a specific test (Regex)
 
-This will run any test that starts with `Test_Upsert`
+This will run any test that starts with `TestSet`
 
-	go test ./code/testing/... -run Test_Upsert
+	go test ./code/testing/... -run TestSet
 
 Useful for running just a few tests when refactoring or TDD'ing
 
@@ -204,6 +234,21 @@ Useful for running just a few tests when refactoring or TDD'ing
 
 Always run this for your automated testing.  If/when your code deadlocks, it will time out and provide a stack trace of the routines to assist in debugging.
 
+You can also issue a `SIGQUIT` to the test if you don't want to set a timeout.
+On the mac you can issue a:
+
+	ctrl+\
+
+Or
+
+	kill -s SIGQUIT go
+
+
+* Testing Options: Checking for race conditions
+
+	go test ./code/testing/... --race
+
+This is a MUST for automated testing.  The race detector makes one promise:  If it finds a race, it's a race. It does NOT guarantee it will find ALL race conditions though.
 
 
 * Test Coverage
@@ -231,7 +276,7 @@ I run coverage for packages with this command:
 
 * Pro Tip
 
-You can turn of the garbage collector to run tests.  This will speed up testing significantly.
+You can turn off the garbage collector to run tests.  This will speed up testing significantly.
 
 Do NOT do this for benchmarking!
 
@@ -262,6 +307,22 @@ Note: I turn of GC for creating coverage files as well...
 * GoConvey Screenshot
 
 .image ../img/testing/goconvey.png
+
+* Credits
+
+Most of what I have shown today has been learned from working with a group of amazing gophers, such as:
+
+.link http://twitter.com/benbjohnson Ben B. Johnson
+.link http://twitter.com/dgnorton David Norton
+.link http://twitter.com/eddrobinson Edd Robinson
+.link http://twitter.com/jaswilder Jason Wilder
+.link http://twitter.com/joelegasse Joe Legasse
+.link http://github.com/jsternberg Jonathon Sternberg
+.link http://twitter.com/nathanielvcook Nathaniel Cook
+.link http://twitter.com/pauldix Paul Dix
+.link http://twitter.com/toddpersen Todd Persen
+
+
 
 * Questions?
 
