@@ -12,7 +12,7 @@ import (
 // START DECOUPLED-OMIT
 type Handler struct {
 	Store interface {
-		Upsert(key string, value interface{})
+		Set(key string, value interface{})
 		Get(key string) (interface{}, error)
 	}
 
@@ -37,7 +37,7 @@ func (h *Handler) upsert(w http.ResponseWriter, r *http.Request) {
 	log.Println("upsert...")
 	key := r.FormValue("key")
 	value := r.FormValue("value")
-	h.Store.Upsert(key, value)
+	h.Store.Set(key, value)
 
 	w.WriteHeader(http.StatusAccepted)
 }

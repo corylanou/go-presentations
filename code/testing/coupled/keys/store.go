@@ -20,7 +20,7 @@ func NewStore() *Store {
 	return &s
 }
 
-func (vs *Store) Upsert(key string, value interface{}) {
+func (vs *Store) Set(key string, value interface{}) {
 	vs.id++
 	go func() {
 		vs.mu.Lock()
