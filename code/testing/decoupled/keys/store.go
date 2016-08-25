@@ -1,7 +1,6 @@
 package keys
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"sync"
@@ -41,7 +40,7 @@ func (vs *Store) Get(key string) (interface{}, error) {
 	if v, ok := vs.values[key]; ok {
 		return v, nil
 	}
-	return nil, fmt.Errorf("%s not found", key)
+	return nil, notFound{key: key}
 }
 
 func (vs *Store) Count() int {

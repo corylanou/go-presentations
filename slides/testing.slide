@@ -113,6 +113,31 @@ Issues:
 - We don't know how long it will take for the value to be written to the database
 - It could fail and never be written, so we need to be able to time out the test
 
+* Key Store
+
+.code ../code/testing/coupled/keys/store.go /START STORE-OMIT/,/END STORE-OMIT/
+
+* Key Store.Set
+
+.code ../code/testing/coupled/keys/store.go /START STORE-SET-OMIT/,/END STORE-SET-OMIT/
+
+* Key Store.Get
+
+.code ../code/testing/coupled/keys/store.go /START STORE-GET-OMIT/,/END STORE-GET-OMIT/
+
+* httpd.Handler
+
+.code ../code/testing/coupled/httpd/handler.go /START COUPLED-OMIT/,/END COUPLED-OMIT/
+
+* httpd.Handler.set
+
+.code ../code/testing/coupled/httpd/handler.go /START SET-OMIT/,/END SET-OMIT/
+
+* httpd.Handler.get
+
+.code ../code/testing/coupled/httpd/handler.go /START GET-OMIT/,/END GET-OMIT/
+
+
 * time.Sleep
 
 .code ../code/testing/coupled/httpd/handler_test.go /START SLEEP-OMIT/,/END SLEEP-OMIT/
@@ -176,6 +201,10 @@ Currently to test an http endpoint, we require an actual `keys.Store`.  That is 
 
 .link http://dave.cheney.net/2016/08/20/solid-go-design Dave Cheney Solid Go Design
 
+* The current problem
+
+.image ../img/testing/coverage-coupled.png
+
 * Ok, so it's loosely coupled now, what did I gain?
 
 * Mocking out services in your tests
@@ -188,10 +217,47 @@ Currently to test an http endpoint, we require an actual `keys.Store`.  That is 
 
 .code ../code/testing/decoupled/httpd/handler_test.go /START MOCK-SETUP-OMIT/,/END MOCK-SETUP-OMIT/
 
+* Testing for No Key
+
+.code ../code/testing/decoupled/httpd/handler_test.go /START NO-KEY-OMIT/,/END NO-KEY-OMIT/
+
+* No Key Coverage
+
+.image ../img/testing/coverage-no-key.png
+
+* Testing for Not Found
+
+.code ../code/testing/decoupled/httpd/handler_test.go /START NOT-FOUND-OMIT/,/END NOT-FOUND-OMIT/
+
+* Not Found Coverage
+
+.image ../img/testing/coverage-not-found.png
+
+* Testing for a server error
+
+.code ../code/testing/decoupled/httpd/handler_test.go /START GET-SERVER-ERROR-OMIT/,/END GET-SERVER-ERROR-OMIT/
+
+* Server Error Coverage
+
+.image ../img/testing/coverage-server-error.png
+
+* Testing for success
+
+.code ../code/testing/decoupled/httpd/handler_test.go /START GET-SUCCESS-OMIT/,/END GET-SUCCESS-OMIT/
+
+* Server Error Coverage
+
+.image ../img/testing/coverage-success.png
+
+* 100% Coverage!
+
+.image ../img/testing/coverage.png
+
 * We Came, We Decoupled, We Mocked Out!
 
 - No longer dependent on services outside our package for testing.
 - Can easily test all code branches of our package, including all error conditions
+- No longer dependent on testing asynchronously!!!!
 
 
 * Test Options
@@ -211,7 +277,7 @@ tests on automated testing platforms such as jenkins, circle, etc.
 	--- SKIP: TestSet_Sleep (0.00s)
 	   handler_test.go:36:
 	=== RUN   TestSet_Channels
-	2016/08/23 20:11:09 upsert...
+	2016/08/23 20:11:09 set...
 	2016/08/23 20:11:10 get...
 	2016/08/23 20:11:10 inserted:  foo  with value of  bar
 	2016/08/23 20:11:10 get...
@@ -270,7 +336,7 @@ My typical script:
 	go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
 	echo "coverage files created"
 
-* How did we do?
+* Coverage Output
 
 .image ../img/testing/coverage.png
 

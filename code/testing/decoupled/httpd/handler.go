@@ -28,13 +28,13 @@ func NewHandler() *Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.mux.Add("POST", "/key", http.HandlerFunc(h.upsert))
+	h.mux.Add("POST", "/key", http.HandlerFunc(h.set))
 	h.mux.Add("GET", "/key", http.HandlerFunc(h.get))
 	h.mux.ServeHTTP(w, r)
 }
 
-func (h *Handler) upsert(w http.ResponseWriter, r *http.Request) {
-	log.Println("upsert...")
+func (h *Handler) set(w http.ResponseWriter, r *http.Request) {
+	log.Println("set...")
 	key := r.FormValue("key")
 	value := r.FormValue("value")
 	h.Store.Set(key, value)
@@ -53,7 +53,11 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 
 	value, err := h.Store.Get(key)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if isNotFound(err) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -63,4 +67,12 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	b, _ := json.Marshal(response)
 	w.Write(b)
 	log.Printf("took %s", time.Since(now))
+}
+
+func isNotFound(err error) bool {
+	type notFound interface {
+		NotFound()
+	}
+	_, ok := err.(notFound)
+	return ok
 }

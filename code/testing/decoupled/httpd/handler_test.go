@@ -2,14 +2,13 @@ package httpd_test
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
-	"time"
 
 	"github.com/corylanou/go-presentations/code/testing/decoupled/httpd"
 )
@@ -30,72 +29,123 @@ func TestSet_NoErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	r.Form = url.Values{"key": []string{"foo"}, "value": []string{"bar"}}
 
 	handler.ServeHTTP(w, r)
 	if exp, got := w.Code, http.StatusAccepted; exp != got {
 		t.Errorf("unexpected error code. exp: %d, got %d", exp, got)
 	}
-
-	// START FUNC-INNER-OMIT
-	test := func() error {
-		w = httptest.NewRecorder()
-		r, err = http.NewRequest("GET", "/key?key=foo", nil)
-		if err != nil {
-			return err
-		}
-		handler.ServeHTTP(w, r)
-
-		if got, exp := w.Code, http.StatusOK; got != exp {
-			return fmt.Errorf("unexpected status code.  got %d, expected %d", got, exp)
-		}
-		data := map[string]interface{}{}
-		if err := json.Unmarshal(w.Body.Bytes(), &data); err != nil {
-			return err
-		}
-		if got, exp := data["foo"], "bar"; got != exp {
-			return fmt.Errorf("unexpected value.  got: %v, exp %v", got, exp)
-		}
-		// test successful
-		return nil
-	}
-	// END FUNC-INNER-OMIT
-
-	// START CHANNEL-SETUP-OMIT
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-	timeout := time.NewTimer(4 * time.Second)
-	defer timeout.Stop()
-	// END CHANNEL-SETUP-OMIT
-
-	// START CHANNEL-OMIT
-	var testErr error
-
-	for {
-		select {
-		case <-timeout.C:
-			t.Fatalf("test timed out waiting for success.  last error: %s", testErr)
-			return
-		case <-ticker.C:
-			testErr = test()
-			if testErr == nil {
-				// test successful
-				return
-			}
-		}
-	}
-	// END CHANNEL-OMIT
 }
+
+// START NO-KEY-OMIT
+func TestGet_NoKey(t *testing.T) {
+	handler := httpd.NewHandler()
+	store := &MockStore{}
+	handler.Store = store
+
+	w := httptest.NewRecorder()
+	r, err := http.NewRequest("GET", "/key", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	handler.ServeHTTP(w, r)
+	if exp, got := w.Code, http.StatusBadRequest; exp != got {
+		t.Log(w.Body)
+		t.Errorf("unexpected error code. exp: %d, got %d", exp, got)
+	}
+}
+
+// END NO-KEY-OMIT
+
+// START NOT-FOUND-OMIT
+func TestGet_NotFound(t *testing.T) {
+	handler := httpd.NewHandler()
+	store := &MockStore{}
+	store.getFn = func(string) (interface{}, error) {
+		return nil, notFound{}
+	}
+	handler.Store = store
+
+	w := httptest.NewRecorder()
+	r, err := http.NewRequest("GET", "/key?key=foo", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	handler.ServeHTTP(w, r)
+	if got, exp := w.Code, http.StatusNotFound; got != exp {
+		t.Log(w.Body)
+		t.Errorf("unexpected error code. got: %d, exp %d", got, exp)
+	}
+}
+
+// END NOT-FOUND-OMIT
+
+// START GET-SERVER-ERROR-OMIT
+func TestGet_ServerError(t *testing.T) {
+	handler := httpd.NewHandler()
+	store := &MockStore{}
+	store.getFn = func(string) (interface{}, error) {
+		return nil, errors.New("boom")
+	}
+	handler.Store = store
+
+	w := httptest.NewRecorder()
+	r, err := http.NewRequest("GET", "/key?key=foo", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	handler.ServeHTTP(w, r)
+	if got, exp := w.Code, http.StatusInternalServerError; got != exp {
+		t.Log(w.Body)
+		t.Errorf("unexpected error code. got: %d, exp %d", got, exp)
+	}
+}
+
+// END GET-SERVER-ERROR-OMIT
+
+// START GET-SUCCESS-OMIT
+func TestGet_Success(t *testing.T) {
+	handler := httpd.NewHandler()
+	store := &MockStore{}
+	store.getFn = func(string) (interface{}, error) {
+		return "bar", nil
+	}
+	handler.Store = store
+
+	w := httptest.NewRecorder()
+	r, err := http.NewRequest("GET", "/key?key=foo", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	handler.ServeHTTP(w, r)
+	if got, exp := w.Code, http.StatusOK; got != exp {
+		t.Fatalf("unexpected status code.  got %d, expected %d", got, exp)
+	}
+	data := map[string]interface{}{}
+	if err := json.Unmarshal(w.Body.Bytes(), &data); err != nil {
+		t.Fatal(err)
+	}
+	if got, exp := data["foo"], "bar"; got != exp {
+		t.Fatalf("unexpected value.  got: %v, exp %v", got, exp)
+	}
+}
+
+// END GET-SUCCESS-OMIT
 
 // START MOCK-OMIT
 type MockStore struct {
-	upsertFn func(key string, value interface{})
-	getFn    func(key string) (interface{}, error)
+	setFn func(key string, value interface{})
+	getFn func(key string) (interface{}, error)
 }
 
 func (ms *MockStore) Set(key string, value interface{}) {
-	if ms.upsertFn != nil {
-		ms.upsertFn(key, value)
+	if ms.setFn != nil {
+		ms.setFn(key, value)
 	}
 }
 
@@ -119,3 +169,12 @@ func TestVerbose(t *testing.T) {
 }
 
 // END VERBOSE-OMIT
+
+// not found mock
+type notFound struct{}
+
+func (nf notFound) NotFound() {}
+
+func (nf notFound) Error() string {
+	return ""
+}
