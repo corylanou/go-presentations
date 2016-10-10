@@ -1,0 +1,16 @@
+Testing with Go 1.7
+18:00 19 Oct 2016
+Tags: go testing 1.7
+
+Cory LaNou
+Core Database Developer - InfluxData
+http://github.com/corylanou
+@corylanou
+
+
+* References
+
+Most of this presentation came from the following presentations:
+
+.link https://www.youtube.com/watch?v=Iu4nqoCzlRE Golang UK Conference 2016 - Marcel van Lohuizen - Advanced Testing Concepts
+.link https://blog.golang.org/subtests Using Subtests and Sub-benchmarks
